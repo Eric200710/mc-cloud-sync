@@ -6,22 +6,35 @@ echo ==========================================================
 echo        Minecraft 雲端接力系統 - 正在自 GitHub 下載必要組件...
 echo ==========================================================
 
-:: 1. 直接用 PowerShell 下載最新版的 init_setup.ps1
-set "RAW_URL=https://raw.githubusercontent.com/Eric200710/mc-cloud-sync/main"
-echo [1/3] 正在下載核心安裝邏輯 (init_setup.ps1)...
-powershell.exe -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('%RAW_URL%/init_setup.ps1', 'init_setup.ps1')"
+set "REPO=https://raw.githubusercontent.com/Eric200710/mc-cloud-sync/main"
 
-:: 2. 下載 sync_world.bat
-echo [2/3] 正在下載同步啟動檔 (sync_world.bat)...
-powershell.exe -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('%RAW_URL%/sync_world.bat', 'sync_world.bat')"
+:: 透過 PowerShell 下載三個檔案，加入詳細下載進度與錯誤重試
+powershell.exe -NoProfile -Command ^
+    "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;" ^
+    "$files = @('init_setup.ps1', 'sync_world.bat', 'sync_world.ps1');" ^
+    "foreach ($f in $files) {" ^
+    "    Write-Host \" -> 正在下載 $f ...\" -ForegroundColor Cyan;" ^
+    "    try {" ^
+    "        Invoke-WebRequest -Uri '%REPO%/'$f -OutFile $f -UseBasicParsing;" ^
+    "        Write-Host \"    [成功] $f 下載完成！\" -ForegroundColor Green;" ^
+    "    } catch {" ^
+    "        Write-Host \"    [錯誤] 下載 $f 失敗: $($_.Exception.Message)\" -ForegroundColor Red;" ^
+    "    }" ^
+    "}"
 
-:: 3. 下載 sync_world.ps1
-echo [3/3] 正在下載同步邏輯核心 (sync_world.ps1)...
-powershell.exe -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('%RAW_URL%/sync_world.ps1', 'sync_world.ps1')"
+if not exist "init_setup.ps1" (
+    echo.
+    echo ==========================================================
+    echo [錯誤] 未能成功下載 init_setup.ps1！
+    echo 請確認您的網路連線是否正常，或稍後再試。
+    echo ==========================================================
+    pause
+    exit /b 1
+)
 
-echo [完成] 所有必要腳本已下載就緒！正在啟動安裝精靈...
+echo.
+echo [完成] 所有必要組件已下載就緒！正在啟動安裝精靈...
 echo.
 
-:: 4. 執行下載下來的 init_setup.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\init_setup.ps1"
 pause
