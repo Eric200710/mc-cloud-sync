@@ -4,7 +4,7 @@
     1. 檢查並引導安裝 Google 雲端硬碟電腦版
     2. 自動搜尋或讓使用者設定正確的 Minecraft 安裝路徑
     3. 自動生成/更新 config.json 設定檔
-    4. 自 GitHub 自動更新/確保最新版的 sync_world.bat / sync_world.ps1
+    4. 自動從 GitHub 下載/更新最新版的 sync_world 腳本與說明檔
 #>
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -15,8 +15,31 @@ Write-Host "==========================================================" -Foregro
 Write-Host "       Minecraft 雲端存檔接力系統 - 初始化安裝精靈         " -ForegroundColor Yellow
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-# ----------------- 步驟 1: 檢查 Google 雲端硬碟電腦版 -----------------
-Write-Host "`n[步驟 1/3] 檢查 Google 雲端硬碟電腦版 (Google Drive for Desktop)..." -ForegroundColor Cyan
+$currentDir = $PSScriptRoot
+
+# ----------------- 步驟 1: 從 GitHub 下載/更新最新腳本 -----------------
+Write-Host "`n[步驟 1/4] 正在從 GitHub 下載最新版本腳本..." -ForegroundColor Cyan
+$repoRawUrl = "https://raw.githubusercontent.com/Eric200710/mc-cloud-sync/main"
+$filesToDownload = @(
+    "sync_world.bat",
+    "sync_world.ps1",
+    "README.md"
+)
+
+foreach ($file in $filesToDownload) {
+    try {
+        $targetPath = Join-Path $currentDir $file
+        $downloadUrl = "$repoRawUrl/$file"
+        Write-Host " -> 正在更新 $file ..." -ForegroundColor Gray
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $targetPath -UseBasicParsing
+        Write-Host "    [成功] $file 已更新至最新版！" -ForegroundColor Green
+    } catch {
+        Write-Host "    [提示] 無法從 GitHub 下載 $file，使用本地現有版本。" -ForegroundColor DarkYellow
+    }
+}
+
+# ----------------- 步驟 2: 檢查 Google 雲端硬碟電腦版 -----------------
+Write-Host "`n[步驟 2/4] 檢查 Google 雲端硬碟電腦版 (Google Drive for Desktop)..." -ForegroundColor Cyan
 $gdriveInstalled = $false
 $possibleGPaths = @(
     "C:\Program Files\Google\Drive File Stream",
@@ -36,16 +59,15 @@ if ($gdriveInstalled -or (Test-Path "G:\")) {
         $installerUrl = "https://dl.google.com/drive-file-stream/GoogleDriveSetup.exe"
         $installerPath = Join-Path $env:TEMP "GoogleDriveSetup.exe"
         Write-Host "正在下載 Google Drive 安裝程式..." -ForegroundColor Cyan
-        Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath
+        Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath -UseBasicParsing
         Write-Host "正在啟動安裝程式，請依照畫面完成安裝並登入帳號..." -ForegroundColor Yellow
         Start-Process -FilePath $installerPath -Wait
         Write-Host "安裝完成！" -ForegroundColor Green
     }
 }
 
-# ----------------- 步驟 2: 設定 Minecraft 安裝目錄 -----------------
-Write-Host "`n[步驟 2/3] 配置 Minecraft 遊戲目錄..." -ForegroundColor Cyan
-$currentDir = $PSScriptRoot
+# ----------------- 步驟 3: 設定 Minecraft 安裝目錄 -----------------
+Write-Host "`n[步驟 3/4] 配置 Minecraft 遊戲目錄..." -ForegroundColor Cyan
 $configFile = Join-Path $currentDir "config.json"
 
 # 載入現有設定
@@ -107,18 +129,10 @@ if ($changeCloud -eq 'Y' -or $changeCloud -eq 'y') {
     $config.cloud_drive_path = Read-Host "請輸入 Google Drive 共享資料夾路徑 (例如 G:\Shared drives\MC)"
 }
 
-# 儲存 config.json
+# ----------------- 步驟 4: 儲存設定檔並就緒 -----------------
+Write-Host "`n[步驟 4/4] 保存設定檔..." -ForegroundColor Cyan
 $config | ConvertTo-Json -Depth 4 | Set-Content $configFile -Encoding UTF8
-Write-Host " -> config.json 設定檔已儲存！" -ForegroundColor Green
-
-# ----------------- 步驟 3: 檢查/更新同步腳本 -----------------
-Write-Host "`n[步驟 3/3] 檢查同步腳本 (sync_world)..." -ForegroundColor Cyan
-if (Test-Path (Join-Path $currentDir "sync_world.ps1")) {
-    Write-Host " -> sync_world.ps1 同步腳本已就緒！" -ForegroundColor Green
-} else {
-    Write-Host " -> 正在從 GitHub / 雲端拉取最新的 sync_world.ps1..." -ForegroundColor Yellow
-    # 這裡可配置 GitHub raw 網址更新
-}
+Write-Host " -> config.json 設定檔已儲存完畢！" -ForegroundColor Green
 
 Write-Host "`n==========================================================" -ForegroundColor Cyan
 Write-Host "★ 初始化設定全部完成！" -ForegroundColor Green
